@@ -9,7 +9,7 @@ from sphinx import addnodes
 from docutils.statemachine import StringList
 import json
 
-def doctree_resolved_handler(app,):#, fromdocname):
+def doctree_resolved_handler(app):
 
     # D will contain the whole content, collecting from each json file.
     D = {'classes': {}, 'messages': {}}
@@ -68,7 +68,8 @@ class PharoAutoCompiledMethodDirective(Directive):
 
     def run(self):
 
-        pharo_json_export = self.state.document.settings.env.pharo_json_export
+        env = self.state.document.settings.env
+        pharo_json_export = env.pharo_json_export
                 
         fullSelector = self.arguments[0]
         className, selector = fullSelector.split('>>')
@@ -100,12 +101,20 @@ class PharoAutoCompiledMethodDirective(Directive):
         definition_node = docutils.nodes.literal_block(text=#'\n' + 
                             '\n'.join(sourceCode), language='smalltalk')
 
+        targetid = 'compiledMethod-%d' % env.new_serialno('compiledMethod')
+        targetnode = docutils.nodes.target('', '', ids=[targetid])
+
         indexnode = addnodes.index()
         indexnode['entries'] = [
-            ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), fullSelector, False, None)
+                ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, '', None)
         ]
 
-        return [indexnode, definition_node] + node.children
+        cmNode = docutils.nodes.section()
+        cmNode += indexnode
+        cmNode += targetnode
+        cmNode += definition_node
+        #return [indexnode, definition_node] + node.children
+        return cmNode.children + node.children
 
         '''
         field_comment = docutils.nodes.field()
