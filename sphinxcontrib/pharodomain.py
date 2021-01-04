@@ -106,34 +106,17 @@ class PharoAutoCompiledMethodDirective(Directive):
 
         indexnode = addnodes.index()
         indexnode['entries'] = [
-                ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, '', None)
+                ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, False, None),
+                ('single', 'Implementors of {}; {}'.format(selector, fullSelector), targetid, False, None),
+                ('single', "Class {}'s messages; {}".format(className, selector), targetid, False, None),
         ]
 
         cmNode = docutils.nodes.section()
-        cmNode += indexnode
         cmNode += targetnode
+        cmNode += indexnode
         cmNode += definition_node
         #return [indexnode, definition_node] + node.children
         return cmNode.children + node.children
-
-        '''
-        field_comment = docutils.nodes.field()
-        field_comment += docutils.nodes.field_name(text='Comment')
-        field_comment_body = docutils.nodes.field_body()
-        field_comment_body += node
-        field_comment += field_comment_body
-        field_body = docutils.nodes.field()
-        field_body += docutils.nodes.field_name(text='Body')
-        field_body_body = docutils.nodes.field_body()
-        field_body_body += definition_node
-        field_body += field_body_body
-
-        field_list_node = docutils.nodes.field_list()
-        field_list_node += field_comment
-        field_list_node += field_body
-
-        return [field_list_node]
-        '''
 
 class PharoDomain(Domain):
 
@@ -157,24 +140,8 @@ class PharoDomain(Domain):
         return '{}.{}'.format('pharo', node.arguments[0])
 
     def get_objects(self):
-        for obj in self.data['classes']:
-            yield(obj)
-        for obj in self.data['compiledMethods']:
-            yield(obj)
-
-    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
-        match = [(docname, anchor)
-                 for name, sig, typ, docname, anchor, prio
-                 in self.get_objects() if sig == target]
-
-        if len(match) > 0:
-            todocname = match[0][0]
-            targ = match[0][1]
-
-            return make_refnode(builder, fromdocname, todocname, targ, contnode, targ)
-        else:
-            print('Awww, found nothing')
-            return None
+        for obj in self.data['classes']:            yield(obj)
+        for obj in self.data['compiledMethods']:    yield(obj)
 
 def setup(app):
     app.add_config_value('pharo_json_export_filenames', [], 'html')
