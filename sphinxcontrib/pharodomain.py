@@ -45,15 +45,19 @@ class PharoAutoClassDirective(Directive):
         class_comment = '\n'.join(classDef['comment'])
         include_comment = self.options.get('include-comment')
 
-        #definition = classDef['definition'] + ('\n\n"{}"'.format(class_comment.replace('"', '""')) if include_comment == 'yes' else '')
         definition = classDef['definition']
 
+        comment_nodes = []
         if include_comment == 'md':
-            comment_node = docutils.nodes.literal_block(text=class_comment, language='md')
+            rst = StringList()
+            dummySourceFilename = '{}.md'.format(className)
+            for i, l in enumerate(classDef['comment']):
+                rst.append(l, dummySourceFilename, i)
+            comment_node = docutils.nodes.section()
+            nested_parse_with_titles(self.state, rst, comment_node)
+            comment_nodes = comment_node.children
         elif include_comment == 'yes':
-            comment_node = docutils.nodes.literal_block(text=class_comment)
-        else:
-            comment_node = None
+            definition = definition + ('\n\n"{}"'.format(class_comment.replace('"', '""')))
 
         rst = StringList()
         dummySourceFilename = '{}.rst'.format(className)
@@ -69,7 +73,7 @@ class PharoAutoClassDirective(Directive):
         #title_node = docutils.nodes.title(text=className, refid=className)
         definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
 
-        return [definition_node] + ([comment_node] if include_comment != '' else []) + node.children
+        return [definition_node] + comment_nodes + node.children
 
 class PharoAutoCompiledMethodDirective(Directive):
 
