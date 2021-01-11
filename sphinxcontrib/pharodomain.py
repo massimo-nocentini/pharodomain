@@ -48,12 +48,11 @@ class PharoAutoClassDirective(Directive):
         #definition = classDef['definition'] + ('\n\n"{}"'.format(class_comment.replace('"', '""')) if include_comment == 'yes' else '')
         definition = classDef['definition']
 
+        comment_node = None
         if include_comment == 'md':
             comment_node = docutils.nodes.literal_block(text=class_comment, language='md')
         elif include_comment == 'yes':
-            comment_node = docutils.nodes.literal_block(text=class_comment)
-        else:
-            comment_node = None
+            definition = definition + ('\n\n"{}"'.format(class_comment.replace('"', '""')))
 
         rst = StringList()
         dummySourceFilename = '{}.rst'.format(className)
@@ -69,7 +68,7 @@ class PharoAutoClassDirective(Directive):
         #title_node = docutils.nodes.title(text=className, refid=className)
         definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
 
-        return [definition_node] + ([comment_node] if include_comment != '' else []) + node.children
+        return [definition_node] + ([comment_node] if comment_node else []) + node.children
 
 class PharoAutoCompiledMethodDirective(Directive):
 
