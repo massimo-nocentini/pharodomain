@@ -1,6 +1,7 @@
 
 import docutils
-from docutils.parsers.rst import Directive
+
+from docutils.parsers.rst import Directive, directives
 from docutils.statemachine import ViewList
 from sphinx.domains import Domain
 from sphinx.roles import XRefRole
@@ -30,7 +31,7 @@ class PharoAutoClassDirective(Directive):
     required_arguments = 1
     optional_arguments = 0
     final_argument_whitespace = False
-    option_spec = {}
+    option_spec = {'include-comment': directives.unchanged, }
     has_content = True
 
     def run(self):
@@ -41,22 +42,34 @@ class PharoAutoClassDirective(Directive):
         classDef = pharo_json_export['classes'][className]
         classDef['description'] = [''] + [str(l) for l in self.content]
 
-        rst = StringList()
+        class_comment = '\n'.join(classDef['comment'])
+        include_comment = self.options.get('include-comment')
 
+        #definition = classDef['definition'] + ('\n\n"{}"'.format(class_comment.replace('"', '""')) if include_comment == 'yes' else '')
+        definition = classDef['definition']
+
+        if include_comment == 'md':
+            comment_node = docutils.nodes.literal_block(text=class_comment, language='md')
+        elif include_comment == 'yes':
+            comment_node = docutils.nodes.literal_block(text=class_comment)
+        else:
+            comment_node = None
+
+        rst = StringList()
         dummySourceFilename = '{}.rst'.format(className)
         for i, l in enumerate(classDef['description']):
             rst.append(l, dummySourceFilename, i)
 
         node = docutils.nodes.section()
-        node.document = self.state.document
+        #node.document = self.state.document
 
         # Parse the rst.
         nested_parse_with_titles(self.state, rst, node)
 
         #title_node = docutils.nodes.title(text=className, refid=className)
-        definition_node = docutils.nodes.literal_block(text=classDef['definition'], language='smalltalk')
+        definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
 
-        return [definition_node] + node.children
+        return [definition_node] + ([comment_node] if include_comment != '' else []) + node.children
 
 class PharoAutoCompiledMethodDirective(Directive):
 
@@ -78,7 +91,8 @@ class PharoAutoCompiledMethodDirective(Directive):
         messageDef = pharo_json_export['messages'][selector[1:]]
         compiled_method = messageDef['implementors'][className]
         compiled_method['description'] = [''] + ['  ' + str(s) for s in self.content]
-        sourceCode = ['{} >> {} '.format(className, compiled_method['sourceCode'][0])] + compiled_method['sourceCode'][1:]
+        protocol = compiled_method['category']
+        sourceCode = ['"{}, protocol {}"'.format(className, protocol)] + compiled_method['sourceCode']
         #del compiled_method['sourceCode'][1]
         #compiled_method['sourceCode'].append(']')
 
