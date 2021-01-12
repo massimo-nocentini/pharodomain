@@ -121,7 +121,7 @@ class PharoAutoCompiledMethodDirective(Directive):
         indexnode['entries'] = [
                 ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, False, None),
                 ('single', 'Implementors of {}; {}'.format(selector, fullSelector), targetid, False, None),
-                ('single', "Class {}'s messages; {}".format(className, selector), targetid, False, None),
+                ('single', "a {} understands:; {}".format(className, selector), targetid, False, None),
         ]
 
         cmNode = docutils.nodes.section()
