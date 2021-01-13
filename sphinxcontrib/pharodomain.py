@@ -120,9 +120,12 @@ class PharoAutoCompiledMethodDirective(Directive):
         indexnode = addnodes.index()
         indexnode['entries'] = [
                 ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, False, None),
-                ('single', 'Implementors of {}; {}'.format(selector, fullSelector), targetid, False, None),
                 ('single', "a {} understands:; {}".format(className, selector), targetid, False, None),
         ]
+
+        if not compiled_method['isTestMethod']:
+            quintuple = ('single', 'Implementors of {}; {}'.format(selector, fullSelector), targetid, False, None)
+            indexnode['entries'].append(quintuple)
 
         cmNode = docutils.nodes.section()
         cmNode += targetnode
