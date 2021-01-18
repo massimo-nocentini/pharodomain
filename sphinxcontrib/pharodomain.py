@@ -36,7 +36,8 @@ class PharoAutoClassDirective(Directive):
 
     def run(self):
         
-        pharo_json_export = self.state.document.settings.env.pharo_json_export
+        env = self.state.document.settings.env
+        pharo_json_export = env.pharo_json_export
 
         className = self.arguments[0]
         classDef = pharo_json_export['classes'][className]
@@ -68,7 +69,15 @@ class PharoAutoClassDirective(Directive):
         #title_node = docutils.nodes.title(text=className, refid=className)
         definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
 
-        return [definition_node] + ([comment_node] if comment_node else []) + node.children
+        targetid = 'pharo-class-%d' % env.new_serialno('pharo-class')
+        targetnode = docutils.nodes.target('', '', ids=[targetid])
+
+        indexnode = addnodes.index()
+        indexnode['entries'] = [
+                ('single', 'Package {} contains; {}'.format(classDef['category'], className), targetid, False, None),
+        ]
+
+        return [targetnode, indexnode, definition_node] + ([comment_node] if comment_node else []) + node.children
 
 class PharoAutoCompiledMethodDirective(Directive):
 
@@ -120,11 +129,11 @@ class PharoAutoCompiledMethodDirective(Directive):
         indexnode = addnodes.index()
         indexnode['entries'] = [
                 ('single', 'Protocol {}; {}'.format(compiled_method['category'], fullSelector), targetid, False, None),
-                ('single', "a {} understands:; {}".format(className, selector), targetid, False, None),
+                ('single', "a {} understands; {}".format(className, selector), targetid, False, None),
         ]
 
         if not compiled_method['isTestMethod']:
-            quintuple = ('single', 'Implementors of {}; {}'.format(selector, fullSelector), targetid, False, None)
+            quintuple = ('single', '{} is understood by; {}'.format(selector, fullSelector), targetid, False, None)
             indexnode['entries'].append(quintuple)
 
         cmNode = docutils.nodes.section()
