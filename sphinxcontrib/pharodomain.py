@@ -41,7 +41,7 @@ class PharoAutoClassDirective(Directive):
 
         className = self.arguments[0]
         classDef = pharo_json_export['classes'][className]
-        classDef['description'] = [''] + [str(l) for l in self.content]
+        classDef['description'] = ['', '.. _pharo-class-{}:'.format(className), ''] + [str(l) for l in self.content]
 
         class_comment = '\n'.join(classDef['comment'])
         include_comment = self.options.get('include-comment')
@@ -66,11 +66,10 @@ class PharoAutoClassDirective(Directive):
         # Parse the rst.
         nested_parse_with_titles(self.state, rst, node)
 
-        #title_node = docutils.nodes.title(text=className, refid=className)
-        definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
-
         targetid = 'pharo-class-%d' % env.new_serialno('pharo-class')
-        targetnode = docutils.nodes.target('', '', ids=[targetid])
+        targetnode = docutils.nodes.target('', ids=[targetid])
+
+        definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
 
         indexnode = addnodes.index()
         indexnode['entries'] = [
@@ -123,7 +122,7 @@ class PharoAutoCompiledMethodDirective(Directive):
         definition_node = docutils.nodes.literal_block(text=#'\n' + 
                             '\n'.join(sourceCode), language='smalltalk')
 
-        targetid = 'compiledMethod-%d' % env.new_serialno('compiledMethod')
+        targetid = 'pharo-compiledMethod-%d' % env.new_serialno('compiledMethod')
         targetnode = docutils.nodes.target('', '', ids=[targetid])
 
         indexnode = addnodes.index()
