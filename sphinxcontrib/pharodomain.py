@@ -25,6 +25,22 @@ def doctree_resolved_handler(app):
     print('json loaded succeessfully, with {} messages and {} classes.'.format(
         len(D['messages']), len(D['classes'])))
 
+def nested_parse(lines, filename, directive):
+
+    state = directive.state
+    rst = StringList()
+
+    for i, l in enumerate(lines):
+        rst.append(l, filename, i)
+
+    node = docutils.nodes.section()
+    node.document = state.document
+
+    # Parse the rst.
+    nested_parse_with_titles(state, rst, node)
+
+    return node.children
+
 
 class PharoAutoClassDirective(Directive):
 
@@ -41,12 +57,16 @@ class PharoAutoClassDirective(Directive):
 
         className = self.arguments[0]
         classDef = pharo_json_export['classes'][className]
-        classDef['description'] = ['', '.. _pharo-class-{}:'.format(className), ''] + [str(l) for l in self.content]
+        classDef['description'] = [''] + [str(l) for l in self.content]
+
+        # a node to reference the current class, by unpacking a unary list.
+        labelnode, = nested_parse(lines=['.. _pharo-class-{}:'.format(className)],
+                                  filename='labels-for-pharo-classes.rst',
+                                  directive=self)
 
         class_comment = '\n'.join(classDef['comment'])
         include_comment = self.options.get('include-comment')
 
-        #definition = classDef['definition'] + ('\n\n"{}"'.format(class_comment.replace('"', '""')) if include_comment == 'yes' else '')
         definition = classDef['definition']
 
         comment_node = None
@@ -55,16 +75,9 @@ class PharoAutoClassDirective(Directive):
         elif include_comment == 'yes':
             definition = definition + ('\n\n"{}"'.format(class_comment.replace('"', '""')))
 
-        rst = StringList()
-        dummySourceFilename = '{}.rst'.format(className)
-        for i, l in enumerate(classDef['description']):
-            rst.append(l, dummySourceFilename, i)
-
-        node = docutils.nodes.section()
-        #node.document = self.state.document
-
-        # Parse the rst.
-        nested_parse_with_titles(self.state, rst, node)
+        content_nodes = nested_parse(lines=classDef['description'],
+                                     filename='{}.rst'.format(className),
+                                     directive=self)
 
         targetid = 'pharo-class-%d' % env.new_serialno('pharo-class')
         targetnode = docutils.nodes.target('', ids=[targetid])
@@ -76,7 +89,9 @@ class PharoAutoClassDirective(Directive):
                 ('single', 'Package {} contains; {}'.format(classDef['category'], className), targetid, False, None),
         ]
 
-        return [targetnode, indexnode, definition_node] + ([comment_node] if comment_node else []) + node.children
+        return ([targetnode, indexnode, labelnode, definition_node] + 
+                ([comment_node] if comment_node else []) + 
+                content_nodes)
 
 class PharoAutoCompiledMethodDirective(Directive):
 
@@ -98,27 +113,21 @@ class PharoAutoCompiledMethodDirective(Directive):
         messageDef = pharo_json_export['messages'][selector[1:]]
         compiled_method = messageDef['implementors'][className]
         compiled_method['description'] = [''] + ['  ' + str(s) for s in self.content]
+
+        # a node to reference the current message, by unpacking a unary list.
+        labelnode, = nested_parse(lines=['.. _pharo-compiledMethod-{}>>{}:'.format(
+                                            className.replace(' ', '_'),    # because `Var class` could appear
+                                            selector.replace(':', '-'))],   # because `:` delimits the label's end
+                                  filename='labels-for-pharo-messages.rst',
+                                  directive=self)
+
         protocol = compiled_method['category']
         sourceCode = ['"{}, protocol {}"'.format(className, protocol)] + compiled_method['sourceCode']
-        #del compiled_method['sourceCode'][1]
-        #compiled_method['sourceCode'].append(']')
 
-        rst = StringList()
+        content_nodes = nested_parse(lines=compiled_method['description'],
+                                     filename='{}.rst'.format(fullSelector),
+                                     directive=self)
 
-        dummySourceFilename = '{}.rst'.format(fullSelector)
-        #rst.append('.. py:function:: {}({})'.format(
-                      #fullSelector, ', '.join(compiled_method['argumentNames'])),
-                   #dummySourceFilename, 0)
-        for i, l in enumerate(compiled_method['description'], start=0):
-            rst.append(l, dummySourceFilename, i)
-
-        node = docutils.nodes.section()
-
-        # Parse the rst.
-        #nested_parse_with_titles(self.state, self.content, node)
-        nested_parse_with_titles(self.state, rst, node)
-
-        #title_node = docutils.nodes.title(text=className, refid=className)
         definition_node = docutils.nodes.literal_block(text=#'\n' + 
                             '\n'.join(sourceCode), language='smalltalk')
 
@@ -138,9 +147,9 @@ class PharoAutoCompiledMethodDirective(Directive):
         cmNode = docutils.nodes.section()
         cmNode += targetnode
         cmNode += indexnode
+        cmNode += labelnode
         cmNode += definition_node
-        #return [indexnode, definition_node] + node.children
-        return cmNode.children + node.children
+        return cmNode.children + content_nodes
 
 class PharoDomain(Domain):
 
