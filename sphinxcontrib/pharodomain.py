@@ -113,15 +113,18 @@ class PharoAutoCompiledMethodDirective(Directive):
         fullSelector = self.arguments[0]
         className, selector = fullSelector.split('>>')
         className = ' '.join(className.split('_'))
+
+        valid_Sphinx_selector = '{}-{}'.format(className.replace(' ', '-'),     # because `Var class` could appear
+                                               selector[1:].replace(':', '-'))  # because `:` delimits the label's end
+                                                                                # also exclude the initial `#` symbol
+
         fullSelector = '{}>>{}'.format(className, selector)
         messageDef = pharo_json_export['messages'][selector[1:]]
         compiled_method = messageDef['implementors'][className]
         compiled_method['description'] = [''] + ['  ' + str(s) for s in self.content]
 
         # a node to reference the current message, by unpacking a unary list.
-        labelnode, = nested_parse(lines=['.. _pharo-compiledMethod-{}>>{}:'.format(
-                                            className.replace(' ', '_'),    # because `Var class` could appear
-                                            selector.replace(':', '-'))],   # because `:` delimits the label's end
+        labelnode, = nested_parse(lines=['.. _pharo-compiledMethod-{}:'.format(valid_Sphinx_selector)],   
                                   filename='labels-for-pharo-messages.rst',
                                   directive=self)
 
@@ -148,6 +151,10 @@ class PharoAutoCompiledMethodDirective(Directive):
             quintuple = ('single', '{} is understood by; {}'.format(selector, fullSelector), targetid, False, None)
             indexnode['entries'].append(quintuple)
 
+        valid_Sphinx_selector = valid_Sphinx_selector[:-1] if valid_Sphinx_selector.endswith('-') else valid_Sphinx_selector
+        env.domaindata['pharo']['compiledMethods'].append(
+            ('pharo-compiledmethod-{}'.format(valid_Sphinx_selector.lower()), '{}>>{}'.format(className, selector), 'pharo', env.docname, 'pharo-compiledMethod-{}'.format(valid_Sphinx_selector).lower(), 0))
+
         cmNode = docutils.nodes.section()
         cmNode += targetnode
         cmNode += indexnode
@@ -155,31 +162,13 @@ class PharoAutoCompiledMethodDirective(Directive):
         cmNode += definition_node
         return cmNode.children + content_nodes
 
-
-class PharoClassRefRole(XRefRole):
-
-    def __call__(self, name, rawtext, text, lineno, inliner, options={}, content=[]):
-        expanded_text = '{} <pharo-class-{}>'.format(text, text.lower())
-        expanded_rawtext = ':ref:`{}`'.format(expanded_text)
-        #print(expanded_text, expanded_rawtext)
-        return super().__call__(':ref:', expanded_rawtext, expanded_text, lineno, inliner, options, content)
-
-    def process_link(self, env, refnode, has_explicit_title, title, target):
-        expanded_target = '{} <pharo-class-{}>'.format(title, title.lower())
-        print(title, target, expanded_target)
-        return title, expanded_target
- 
-
-class PharoCompiledMethodRefRole(ReferenceRole):
-    pass
-
 class PharoDomain(Domain):
 
     name = 'pharo'
     label = 'A Smalltalk domain'
     roles = {
         'cref': XRefRole(),
-        'mref': PharoCompiledMethodRefRole(),
+        'mref': XRefRole(),
     }
     directives = {
         'autoclass': PharoAutoClassDirective,
@@ -197,12 +186,10 @@ class PharoDomain(Domain):
 
     def get_objects(self):
         for obj in self.data['classes']:            yield(obj)
-        #for obj in self.data['compiledMethods']:    yield(obj)
+        for obj in self.data['compiledMethods']:    yield(obj)
     
     def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
         
-        print(target)
-
         match = [(docname, anchor)
                  for name, sig, typ, docname, anchor, prio
                  in self.get_objects() if sig == target]
@@ -213,14 +200,14 @@ class PharoDomain(Domain):
             
             return make_refnode(builder,fromdocname,todocname, targ, contnode, targ)
         else:
-            print("Awww, found nothing")
+            print("{} not found nothing for xref.".format(target))
             return None
 
 def setup(app):
+
     app.add_config_value('pharo_json_export_filenames', [], 'html')
     app.connect('builder-inited', doctree_resolved_handler)
     app.add_domain(PharoDomain)
-    #app.add_role("pharo-cref", PharoClassRefRole())
 
     return {
         'version': '0.1',
