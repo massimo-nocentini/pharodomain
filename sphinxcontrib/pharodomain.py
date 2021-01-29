@@ -5,7 +5,8 @@ from docutils.parsers.rst import Directive, directives
 from docutils.statemachine import ViewList
 from sphinx.domains import Domain
 from sphinx.roles import XRefRole
-from sphinx.util.nodes import nested_parse_with_titles
+from sphinx.util.nodes import nested_parse_with_titles, make_refnode
+from sphinx.util.docutils import ReferenceRole
 from sphinx import addnodes
 from docutils.statemachine import StringList
 import json
@@ -89,6 +90,9 @@ class PharoAutoClassDirective(Directive):
                 ('single', 'Package {} contains; {}'.format(classDef['category'], className), targetid, False, None),
         ]
 
+        env.domaindata['pharo']['classes'].append(
+            ('pharo-class-{}'.format(className.lower()), className, 'pharo', env.docname, 'pharo-class-{}'.format(className.lower()), 0))
+
         return ([targetnode, indexnode, labelnode, definition_node] + 
                 ([comment_node] if comment_node else []) + 
                 content_nodes)
@@ -151,12 +155,31 @@ class PharoAutoCompiledMethodDirective(Directive):
         cmNode += definition_node
         return cmNode.children + content_nodes
 
+
+class PharoClassRefRole(XRefRole):
+
+    def __call__(self, name, rawtext, text, lineno, inliner, options={}, content=[]):
+        expanded_text = '{} <pharo-class-{}>'.format(text, text.lower())
+        expanded_rawtext = ':ref:`{}`'.format(expanded_text)
+        #print(expanded_text, expanded_rawtext)
+        return super().__call__(':ref:', expanded_rawtext, expanded_text, lineno, inliner, options, content)
+
+    def process_link(self, env, refnode, has_explicit_title, title, target):
+        expanded_target = '{} <pharo-class-{}>'.format(title, title.lower())
+        print(title, target, expanded_target)
+        return title, expanded_target
+ 
+
+class PharoCompiledMethodRefRole(ReferenceRole):
+    pass
+
 class PharoDomain(Domain):
 
     name = 'pharo'
     label = 'A Smalltalk domain'
     roles = {
-        'ref': XRefRole()
+        'cref': XRefRole(),
+        'mref': PharoCompiledMethodRefRole(),
     }
     directives = {
         'autoclass': PharoAutoClassDirective,
@@ -174,12 +197,30 @@ class PharoDomain(Domain):
 
     def get_objects(self):
         for obj in self.data['classes']:            yield(obj)
-        for obj in self.data['compiledMethods']:    yield(obj)
+        #for obj in self.data['compiledMethods']:    yield(obj)
+    
+    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
+        
+        print(target)
+
+        match = [(docname, anchor)
+                 for name, sig, typ, docname, anchor, prio
+                 in self.get_objects() if sig == target]
+
+        if len(match) > 0:
+            todocname = match[0][0]
+            targ = match[0][1]
+            
+            return make_refnode(builder,fromdocname,todocname, targ, contnode, targ)
+        else:
+            print("Awww, found nothing")
+            return None
 
 def setup(app):
     app.add_config_value('pharo_json_export_filenames', [], 'html')
     app.connect('builder-inited', doctree_resolved_handler)
     app.add_domain(PharoDomain)
+    #app.add_role("pharo-cref", PharoClassRefRole())
 
     return {
         'version': '0.1',
