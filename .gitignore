@@ -2,3 +2,4 @@
 build/
 dist/
 sphinxcontrib_pharodomain.egg-info/
+sphinxcontrib/__pycache__/

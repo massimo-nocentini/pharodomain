@@ -48,7 +48,10 @@ class PharoAutoClassDirective(Directive):
     required_arguments = 1
     optional_arguments = 0
     final_argument_whitespace = False
-    option_spec = {'include-comment': directives.unchanged, }
+    option_spec = {
+            'include-comment': directives.unchanged,
+            'linenos': directives.unchanged,
+        }
     has_content = True
 
     def run(self):
@@ -57,7 +60,7 @@ class PharoAutoClassDirective(Directive):
         pharo_json_export = env.pharo_json_export
 
         className = self.arguments[0]
-        classDef = pharo_json_export['classes'][className]
+        classDef = pharo_json_export['classes'][className.replace('_', ' ')]
         classDef['description'] = [''] + [str(l) for l in self.content]
 
         # a node to reference the current class, by unpacking a unary list.
@@ -83,7 +86,10 @@ class PharoAutoClassDirective(Directive):
         targetid = 'pharo-class-%d' % env.new_serialno('pharo-class')
         targetnode = docutils.nodes.target('', ids=[targetid])
 
-        definition_node = docutils.nodes.literal_block(text=definition, language='smalltalk')
+        definition_node = docutils.nodes.literal_block(
+                text=definition,
+                language='smalltalk',
+                linenos=self.options.get('linenos', False))
 
         indexnode = addnodes.index()
         indexnode['entries'] = [
@@ -102,7 +108,9 @@ class PharoAutoCompiledMethodDirective(Directive):
     required_arguments = 1
     optional_arguments = 0
     final_argument_whitespace = True
-    option_spec = {}
+    option_spec = {
+            'linenos': directives.unchanged,
+        }
     has_content = True
 
     def run(self):
@@ -135,8 +143,10 @@ class PharoAutoCompiledMethodDirective(Directive):
                                      filename='{}.rst'.format(fullSelector),
                                      directive=self)
 
-        definition_node = docutils.nodes.literal_block(text=#'\n' + 
-                            '\n'.join(sourceCode), language='smalltalk')
+        definition_node = docutils.nodes.literal_block(
+                text='\n'.join(map(lambda l: l.replace('\t', ' ' * 3), sourceCode)),
+                language='smalltalk',
+                linenos=self.options.get('linenos', False))
 
         targetid = 'pharo-compiledMethod-%d' % env.new_serialno('compiledMethod')
         targetnode = docutils.nodes.target('', '', ids=[targetid])
