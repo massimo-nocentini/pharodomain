@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="sphinxcontrib-pharodomain", # Replace with your own username
+    name="sphinxcontrib-pharodomain",
     version="0.0.1",
     author="Massimo Nocentini",
     author_email="massimo.nocentini@gmail.com",
@@ -20,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-          'markdown',
+          'sphinxcontrib-bibtex',
       ],
     python_requires='>=3.9',
 )
